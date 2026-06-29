@@ -7,6 +7,7 @@ const classifyRoutes = require("./routes/classifyRoutes");
 const statsRoutes = require("./routes/statsRoutes");
 const historialRoutes = require("./routes/historialRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const acopioRoutes = require("./routes/acopioRoutes");
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use("/api", classifyRoutes);
 app.use("/api", statsRoutes);
 app.use("/api", historialRoutes)
 app.use("/api", chatRoutes);
+app.use("/api", acopioRoutes);
 
 const PORT = process.env.PORT || 3000;
 
