@@ -3,65 +3,38 @@ const {
     classifyWaste
 } = require("../services/geminiService");
 const supabase = require("../config/supabase");
+const { actualizarProgresoUsuario } = require("../utils/gamification");
+
 async function testGemini(req, res) {
     try {
         const respuesta = await testConnection();
-
-        res.status(200).json({
-            success: true,
-            message: respuesta
-        });
-
+        res.status(200).json({ success: true, message: respuesta });
     } catch (error) {
-
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
-
+        res.status(500).json({ success: false, message: error.message });
     }
 }
 
 async function classifyImage(req, res) {
-
-    console.log(req.file);
-
     if (!req.file) {
-        return res.status(400).json({
-            success: false,
-            message: "No se recibió ninguna imagen."
-        });
+        return res.status(400).json({ success: false, message: "No se recibió ninguna imagen." });
     }
 
-    // Obtener la extensión del archivo
-    const extension = req.file.originalname
-        .split(".")
-        .pop()
-        .toLowerCase();
-
-    // Extensiones permitidas
+    const extension = req.file.originalname.split(".").pop().toLowerCase();
     const permitidas = ["jpg", "jpeg", "png", "webp"];
 
-    // Validar formato
     if (!permitidas.includes(extension)) {
-        return res.status(400).json({
-            success: false,
-            message: "Formato no permitido."
-        });
+        return res.status(400).json({ success: false, message: "Formato no permitido." });
     }
 
     try {
         const mimeType = `image/${extension === "jpg" ? "jpeg" : extension}`;
 
         // 1. Mandamos la imagen a Gemini
-        const resultadoGemini = await classifyWaste(
-            req.file.buffer,
-            mimeType
-        );
+        const resultadoGemini = await classifyWaste(req.file.buffer, mimeType);
 
         // 2. Buscamos el material detectado en nuestra base de datos (Supabase)
         let detallesMaterial = null;
-        let datosUsuario = null; // Guardará cómo quedó tu perfil después de reciclar
+        let datosUsuario = null; 
 
         if (resultadoGemini.material && resultadoGemini.material !== "Otro") {
             const { data: materialData, error: materialError } = await supabase
@@ -77,9 +50,6 @@ async function classifyImage(req, res) {
             if (materialData) {
                 detallesMaterial = materialData;
 
-                // --- 🧠 LA MAGIA DEL BACKEND: FASE 2 ---
-                
-                // Vamos haciendo login :p
                 const usuarioId = req.body.usuarioId ? parseInt(req.body.usuarioId) : 1; 
 
                 // A. Guardamos el registro en el historial (Tabla reciclajes)
@@ -89,31 +59,8 @@ async function classifyImage(req, res) {
                         { usuario_id: usuarioId, material_id: detallesMaterial.id }
                     ]);
 
-                // B. Actualizamos la XP y el nivel del usuario
-                // Primero vemos cuánta XP tiene ahora
-                const { data: userCurrent } = await supabase
-                    .from("usuarios")
-                    .select("xp, nivel")
-                    .eq("id", usuarioId)
-                    .single();
-                
-                if (userCurrent) {
-                    const nuevaXp = userCurrent.xp + detallesMaterial.xp;
-                    
-                    // Lógica de gamificación rápida: cada 50 puntos sube un nivel
-                    const nuevoNivel = Math.floor(nuevaXp / 50) + 1; 
-
-                    // Actualizamos la base de datos y pedimos que nos devuelva el usuario actualizado
-                    const { data: userUpdated } = await supabase
-                        .from("usuarios")
-                        .update({ xp: nuevaXp, nivel: nuevoNivel })
-                        .eq("id", usuarioId)
-                        .select()
-                        .single();
-                    
-                    datosUsuario = userUpdated;
-                }
-                // ----------------------------------------
+                // 🔥 B. USAMOS EL HELPER: Todo el cálculo de XP, Nivel y Racha delegados aquí
+                datosUsuario = await actualizarProgresoUsuario(usuarioId, detallesMaterial.xp);
             }
         }
 
@@ -139,7 +86,4 @@ async function classifyImage(req, res) {
     }
 }
 
-module.exports = {
-    testGemini,
-    classifyImage
-};
+module.exports = { testGemini, classifyImage };

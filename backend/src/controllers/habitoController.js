@@ -1,4 +1,5 @@
 const supabase = require("../config/supabase");
+const { actualizarProgresoUsuario } = require("../utils/gamification");
 
 // 1. Obtener todos los hábitos disponibles para el checklist
 async function getHabitos(req, res) {
@@ -43,35 +44,24 @@ async function completarHabito(req, res) {
 
         if (errorHistorial) throw errorHistorial;
 
-        // C. Traer los puntos actuales del usuario (Cambiado de 'puntos' a 'xp' para que coincida con tu BD)
-        const { data: usuario, error: errorUsuario } = await supabase
-            .from("usuarios")
-            .select("xp") 
-            .eq("id", usuarioId)
-            .single();
+        // 🔥 C. USAMOS EL HELPER: Actualiza XP, Nivel y Racha en un solo paso
+        const datosUsuario = await actualizarProgresoUsuario(usuarioId, habito.puntos);
 
-        let perfilActualizado = "No se pudo actualizar el perfil.";
-        let nuevosPuntos = 0;
+        let perfilStatus = "No se pudo actualizar el perfil automáticamente.";
+        let nivelActual = 1;
 
-        // D. Si el usuario existe, le sumamos los puntos ganados a su columna 'xp'
-        if (usuario) {
-            nuevosPuntos = (usuario.xp || 0) + habito.puntos;
-            
-            const { error: errorUpdate } = await supabase
-                .from("usuarios")
-                .update({ xp: nuevosPuntos }) // Actualizamos la columna 'xp'
-                .eq("id", usuarioId);
-
-            if (!errorUpdate) {
-                perfilActualizado = `¡Puntos actualizados! Total: ${nuevosPuntos} XP.`;
-            }
+        if (datosUsuario) {
+            nivelActual = datosUsuario.nivel;
+            perfilStatus = `¡Ganaste ${habito.puntos} XP! Total: ${datosUsuario.xp} XP (Nivel ${datosUsuario.nivel}, Racha: ${datosUsuario.racha} días).`;
         }
 
         res.status(200).json({
             success: true,
             message: `¡Hábito '${habito.nombre}' registrado con éxito!`,
             puntos_ganados: habito.puntos,
-            perfil_status: perfilActualizado
+            nivel_actual: nivelActual,
+            perfil_status: perfilStatus,
+            perfil_completo: datosUsuario // Le mandamos todo a Dafne para que actualice la app
         });
 
     } catch (error) {
@@ -82,10 +72,9 @@ async function completarHabito(req, res) {
 
 // 3. Obtener el historial de hábitos de un usuario específico
 async function getHistorialHabitos(req, res) {
-    const { usuarioId } = req.params; // Lo recibiremos por la URL
+    const { usuarioId } = req.params;
 
     try {
-        // Magia de Supabase: Hacemos un "JOIN" con la tabla 'habitos' para traer el nombre
         const { data: historial, error } = await supabase
             .from("usuario_habitos")
             .select(`
@@ -97,8 +86,8 @@ async function getHistorialHabitos(req, res) {
                 )
             `)
             .eq("usuario_id", usuarioId)
-            .order("completado_at", { ascending: false }) // Los más recientes primero
-            .limit(10); // Traemos los últimos 10 para no saturar la pantalla
+            .order("completado_at", { ascending: false })
+            .limit(10);
 
         if (error) throw error;
 
