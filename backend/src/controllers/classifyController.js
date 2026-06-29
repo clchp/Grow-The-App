@@ -79,8 +79,8 @@ async function classifyImage(req, res) {
 
                 // --- 🧠 LA MAGIA DEL BACKEND: FASE 2 ---
                 
-                // Usamos el ID 1 temporalmente (tu usuario de prueba)
-                const usuarioId = 1; 
+                // Vamos haciendo login :p
+                const usuarioId = req.body.usuarioId ? parseInt(req.body.usuarioId) : 1; 
 
                 // A. Guardamos el registro en el historial (Tabla reciclajes)
                 await supabase

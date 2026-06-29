@@ -100,7 +100,26 @@ async function classifyWaste(imageBuffer, mimeType) {
 
 }
 
+async function askEcoAssistant(preguntaUsuario) {
+    const systemPrompt = `
+    Eres "GrowBot", un asistente virtual experto en ecología, reciclaje y sostenibilidad para la aplicación Grow.
+    Tu objetivo es responder dudas de los usuarios de forma amigable, concisa (máximo 3 párrafos) y motivadora.
+    Usa emojis relacionados con la naturaleza. Si te preguntan algo que no tiene nada que ver con reciclaje, 
+    medio ambiente o ecología, responde amablemente que solo estás entrenado para salvar al planeta y 
+    redirige la conversación al reciclaje.
+    `;
+
+    // Usamos tu variable 'ai' (la versión nueva del SDK)
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `${systemPrompt}\n\nPregunta del usuario: ${preguntaUsuario}`,
+    });
+
+    return response.text;
+}
+
 module.exports = {
     testConnection,
-    classifyWaste
+    classifyWaste,
+    askEcoAssistant
 };

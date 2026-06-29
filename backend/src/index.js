@@ -6,6 +6,7 @@ const supabase = require("./config/supabase");
 const classifyRoutes = require("./routes/classifyRoutes");
 const statsRoutes = require("./routes/statsRoutes");
 const historialRoutes = require("./routes/historialRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use("/api", classifyRoutes);
 app.use("/api", statsRoutes);
 app.use("/api", historialRoutes)
+app.use("/api", chatRoutes);
 
 const PORT = process.env.PORT || 3000;
 
